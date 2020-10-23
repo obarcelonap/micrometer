@@ -15,13 +15,15 @@
  */
 package io.micrometer.dynatrace2;
 
+import io.micrometer.core.instrument.config.validate.InvalidReason;
 import io.micrometer.core.instrument.config.validate.Validated;
 import io.micrometer.core.instrument.step.StepRegistryConfig;
 
-import static io.micrometer.core.instrument.config.MeterRegistryConfigValidator.checkAll;
-import static io.micrometer.core.instrument.config.MeterRegistryConfigValidator.checkRequired;
-import static io.micrometer.core.instrument.config.validate.PropertyValidator.getSecret;
-import static io.micrometer.core.instrument.config.validate.PropertyValidator.getUrlString;
+import java.util.function.Function;
+
+import static io.micrometer.core.instrument.config.MeterRegistryConfigValidator.*;
+import static io.micrometer.core.instrument.config.validate.PropertyValidator.*;
+import static io.micrometer.dynatrace2.IngestionLimits.MAX_METRIC_LINES_PER_REQUEST;
 
 /**
  * Configuration for {@link DynatraceMeterRegistry}
@@ -44,11 +46,22 @@ public interface DynatraceConfig extends StepRegistryConfig {
     }
 
     @Override
+    default int batchSize() {
+        return getInteger(this, "batchSize").orElse(MAX_METRIC_LINES_PER_REQUEST);
+    }
+
+    @Override
     default Validated<?> validate() {
         return checkAll(this,
                 c -> StepRegistryConfig.validate(c),
                 checkRequired("apiToken", DynatraceConfig::apiToken),
-                checkRequired("uri", DynatraceConfig::uri)
+                checkRequired("uri", DynatraceConfig::uri),
+                check("batchSize", DynatraceConfig::batchSize)
+                        .andThen(invalidateWhenGreaterThan(MAX_METRIC_LINES_PER_REQUEST))
         );
+    }
+
+    default Function<Validated<Integer>, Validated<Integer>> invalidateWhenGreaterThan(int value) {
+        return v -> v.invalidateWhen(b -> b > value, "cannot be greater than " + value, InvalidReason.MALFORMED);
     }
 }

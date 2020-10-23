@@ -16,32 +16,45 @@
 package io.micrometer.dynatrace2;
 
 import io.micrometer.core.instrument.config.validate.Validated;
+import org.assertj.core.api.WithAssertions;
+import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static io.micrometer.dynatrace2.IngestionLimits.MAX_METRIC_LINES_PER_REQUEST;
 
-class DynatraceConfigTest {
+class DynatraceConfigTest implements WithAssertions {
     private final Map<String, String> props = new HashMap<>();
     private final DynatraceConfig config = props::get;
 
     @Test
-    void invalid() {
-        List<Validated.Invalid<?>> failures = config.validate().failures();
-        assertThat(failures.stream().map(Validated.Invalid::getMessage))
-                .containsOnly("is required");
-        assertThat(failures.size()).isEqualTo(3);
+    void shouldBeValid_whenAllRequiredPropsAreSet() {
+        props.put("dynatrace2.apiToken", "secret");
+        props.put("dynatrace2.uri", "https://uri.dynatrace.com");
+
+        assertThat(config.validate().isValid()).isTrue();
     }
 
     @Test
-    void valid() {
-        props.put("dynatrace.apiToken", "secret");
-        props.put("dynatrace.uri", "https://uri.dynatrace.com");
-        props.put("dynatrace.deviceId", "device");
+    void shouldBeInvalid_whenAllRequiredPropsAreMissing() {
+        List<Validated.Invalid<?>> failures = config.validate().failures();
 
-        assertThat(config.validate().isValid()).isTrue();
+        assertThat(failures)
+                .extracting(Validated.Invalid::getMessage)
+                .containsOnly("is required");
+    }
+
+    @Test
+    void shouldBeInvalid_whenBatchSizeIsBiggerThanMaxMetricLinesLimit() {
+        props.put("dynatrace2.batchSize", String.valueOf(MAX_METRIC_LINES_PER_REQUEST + 1));
+
+        List<Validated.Invalid<?>> failures = config.validate().failures();
+
+        assertThat(failures)
+                .extracting(Validated.Invalid::getProperty)
+                .containsOnlyOnce("dynatrace2.batchSize");
     }
 }

@@ -31,5 +31,5 @@ final class IngestionLimits {
     static int DIMENSION_VALUE_MAX_LENGTH = 250;
     static int METRIC_LINE_MAX_DIMENSIONS = 50;
     static int METRIC_LINE_MAX_LENGTH = 2000;
-    static int REST_CALL_MAX_METRIC_LINES = 1000;
+    static int MAX_METRIC_LINES_PER_REQUEST = 1000;
 }

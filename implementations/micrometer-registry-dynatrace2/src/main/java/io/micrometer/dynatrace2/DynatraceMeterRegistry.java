@@ -42,18 +42,15 @@ import java.util.stream.Stream;
  * @since ?
  */
 public class DynatraceMeterRegistry extends StepMeterRegistry {
+    public static final String METRICS_INGESTION_URL = "/api/v2/metrics/ingest";
+
     private static final ThreadFactory DEFAULT_THREAD_FACTORY = new NamedThreadFactory("dynatrace2-metrics-publisher");
     private final Logger logger = LoggerFactory.getLogger(DynatraceMeterRegistry.class);
     private final DynatraceConfig config;
     private final HttpSender httpClient;
-    private LineProtocolFormatterFactory lineProtocolFormatterFactory;
+    private final LineProtocolFormatterFactory lineProtocolFormatterFactory;
 
-    private Set<String> discardedMetrics = new HashSet<>();
-
-    @SuppressWarnings("deprecation")
-    public DynatraceMeterRegistry(DynatraceConfig config, Clock clock) {
-        this(config, clock, DEFAULT_THREAD_FACTORY, new HttpUrlConnectionSender(config.connectTimeout(), config.readTimeout()));
-    }
+    private final Set<String> discardedMetrics = new HashSet<>();
 
     private DynatraceMeterRegistry(DynatraceConfig config, Clock clock, ThreadFactory threadFactory, HttpSender httpClient) {
         super(config, clock);
@@ -70,8 +67,19 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
         logger.info("publish DT2");
         Stream<String> metricLines = toMetricLines(getMeters());
 
-        logger.info("dynatrace v2 metrics to report \n" + metricLines.collect(Collectors.joining(System.lineSeparator())));
-
+        String body = metricLines.collect(Collectors.joining(System.lineSeparator()));
+        logger.info("dynatrace v2 metrics to report \n" + body);
+        try {
+           httpClient.post(config.uri() + METRICS_INGESTION_URL)
+                    .withHeader("Authorization", "Api-Token " + config.apiToken())
+                    .withPlainText(body)
+                    .send()
+                   // TODO: improve response handling
+           .onSuccess((r) -> logger.debug("Ingested {} metric lines into dynatrace", 0))
+           .onError((r) -> logger.error("Failed metric ingestion. code={} body={}", r.code(), r.body()));
+        } catch (Throwable throwable) {
+            logger.error("Failed metric ingestion", throwable);
+        }
     }
 
     private Stream<String> toMetricLines(List<Meter> meters) {
@@ -96,6 +104,43 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
     @Override
     protected TimeUnit getBaseTimeUnit() {
         return TimeUnit.MILLISECONDS;
+    }
+
+    public static Builder builder(DynatraceConfig config) {
+        return new Builder(config);
+    }
+
+    public static class Builder {
+        private final DynatraceConfig config;
+
+        private Clock clock = Clock.SYSTEM;
+        private ThreadFactory threadFactory = DEFAULT_THREAD_FACTORY;
+        private HttpSender httpClient;
+
+        @SuppressWarnings("deprecation")
+        Builder(DynatraceConfig config) {
+            this.config = config;
+            this.httpClient = new HttpUrlConnectionSender(config.connectTimeout(), config.readTimeout());
+        }
+
+        public Builder clock(Clock clock) {
+            this.clock = clock;
+            return this;
+        }
+
+        public Builder threadFactory(ThreadFactory threadFactory) {
+            this.threadFactory = threadFactory;
+            return this;
+        }
+
+        public Builder httpClient(HttpSender httpClient) {
+            this.httpClient = httpClient;
+            return this;
+        }
+
+        public DynatraceMeterRegistry build() {
+            return new DynatraceMeterRegistry(config, clock, threadFactory, httpClient);
+        }
     }
 }
 
