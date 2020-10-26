@@ -15,13 +15,15 @@
  */
 package io.micrometer.dynatrace2;
 
-import io.micrometer.core.instrument.*;
+import io.micrometer.core.instrument.Clock;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.Measurement;
+import io.micrometer.core.instrument.Meter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.*;
+import java.util.stream.Stream;
 
 /**
  * Metric line factory which maps from micrometer domain to expected format in line protocol
@@ -40,37 +42,48 @@ class LineProtocolFormatterFactory {
     /**
      * Creates the formatted metric lines for the corresponding meter. A meter will have multiple
      * metric lines considering the measurements within.
+     *
      * @param meter to extract the measurements
      * @return a stream of formatted metric lines
      */
-    Optional<Stream<String>> toMetricLines(Meter meter) {
-        return metricLineFormatter(meter, clock.wallTime())
-                .map(formatter -> Streams.of(meter.measure()).map(formatter));
+    Stream<String> toMetricLines(Meter meter) {
+        return meter.match(
+                this::toGaugeLine,
+                this::toCounterLine,
+                this::toEmpty,
+                this::toEmpty,
+                this::toEmpty,
+                this::toEmpty,
+                this::toEmpty,
+                this::toEmpty,
+                this::toEmpty
+        );
     }
 
-    private Optional<Function<Measurement, String>> metricLineFormatter(Meter meter, long wallTime) {
-        if (meter instanceof Gauge) {
-            return Optional.of(m -> formatGaugeMetricLine(meter, m, wallTime));
-        } else if (meter instanceof Counter) {
-            return Optional.of(m -> formatCounterMetricLine(meter, m, wallTime));
-        }
-        return Optional.empty();
+    private Stream<String> toGaugeLine(Gauge meter) {
+        long wallTime = clock.wallTime();
+
+        return Streams.of(meter.measure())
+                .map(measurement -> LineProtocolFormatters.formatGaugeMetricLine(
+                        metricName(meter, measurement),
+                        meter.getId().getTags(),
+                        measurement.getValue(),
+                        wallTime));
     }
 
-    private String formatGaugeMetricLine(Meter meter, Measurement measurement, long wallTime) {
-        return LineProtocolFormatters.formatGaugeMetricLine(
-                metricName(meter, measurement),
-                meter.getId().getTags(),
-                measurement.getValue(),
-                wallTime);
+    private Stream<String> toCounterLine(Counter meter) {
+        long wallTime = clock.wallTime();
+
+        return Streams.of(meter.measure())
+                .map(measurement -> LineProtocolFormatters.formatCounterMetricLine(
+                        metricName(meter, measurement),
+                        meter.getId().getTags(),
+                        measurement.getValue(),
+                        wallTime));
     }
 
-    private String formatCounterMetricLine(Meter meter, Measurement measurement, long wallTime) {
-        return LineProtocolFormatters.formatCounterMetricLine(
-                metricName(meter, measurement),
-                meter.getId().getTags(),
-                measurement.getValue(),
-                wallTime);
+    private Stream<String> toEmpty(Meter meter) {
+        return Stream.empty();
     }
 
     private String metricName(Meter meter, Measurement measurement) {

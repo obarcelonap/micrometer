@@ -16,7 +16,6 @@
 package io.micrometer.dynatrace2;
 
 import io.micrometer.core.instrument.Clock;
-import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.step.StepMeterRegistry;
 import io.micrometer.core.instrument.util.NamedThreadFactory;
 import io.micrometer.core.ipc.http.HttpSender;
@@ -24,21 +23,17 @@ import io.micrometer.core.ipc.http.HttpUrlConnectionSender;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * {@link StepMeterRegistry} for Dynatrace metric API v2
  * https://dev-wiki.dynatrace.org/display/MET/MINT+Specification#MINTSpecification-IngestFormat
  *
- * @see <a href="https://www.dynatrace.com/support/help/dynatrace-api/environment-api/metric-v2/post-ingest-metrics/">Dynatrace metric ingestion v2</a>
  * @author Oriol Barcelona
+ * @see <a href="https://www.dynatrace.com/support/help/dynatrace-api/environment-api/metric-v2/post-ingest-metrics/">Dynatrace metric ingestion v2</a>
  * @since ?
  */
 public class DynatraceMeterRegistry extends StepMeterRegistry {
@@ -47,9 +42,6 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
     private final Logger logger = LoggerFactory.getLogger(DynatraceMeterRegistry.class);
     private final DynatraceConfig config;
     private final HttpSender httpClient;
-    private final LineProtocolFormatterFactory lineProtocolFormatterFactory;
-
-    private final Set<String> discardedMetrics = new HashSet<>();
 
     private DynatraceMeterRegistry(DynatraceConfig config, Clock clock, ThreadFactory threadFactory, HttpSender httpClient) {
         super(config, clock);
@@ -58,35 +50,19 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
 
         config().namingConvention(new LineProtocolNamingConvention());
         start(threadFactory);
-        lineProtocolFormatterFactory = new LineProtocolFormatterFactory(clock);
     }
 
     @Override
     protected void publish() {
-        List<String> metricLines = toMetricLines(getMeters())
+        LineProtocolFormatterFactory lineProtocolFormatterFactory = new LineProtocolFormatterFactory(clock);
+
+        List<String> metricLines = getMeters()
+                .stream()
+                .flatMap(lineProtocolFormatterFactory::toMetricLines)
                 .collect(Collectors.toList());
 
         new MetricsApiIngestion(httpClient, config)
                 .sendInBatches(metricLines);
-    }
-
-    private Stream<String> toMetricLines(List<Meter> meters) {
-        return meters.stream()
-                .filter(this::isNotDiscarded)
-                .flatMap(meter -> lineProtocolFormatterFactory.toMetricLines(meter)
-                        .orElseGet(discardMeter(meter.getId().getName())));
-    }
-
-    private boolean isNotDiscarded(Meter meter) {
-        return !discardedMetrics.contains(meter.getId().getName());
-    }
-
-    private Supplier<Stream<String>> discardMeter(String meterName) {
-        return () -> {
-            discardedMetrics.add(meterName);
-            logger.warn("Meter '{}' has been discarded because is not supported in Dynatrace metric API v2", meterName);
-            return Stream.empty();
-        };
     }
 
     @Override
