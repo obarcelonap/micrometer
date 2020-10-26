@@ -1,21 +1,29 @@
 package io.micrometer.dynatrace2;
 
-import io.micrometer.core.ipc.http.*;
-import io.micrometer.core.ipc.http.HttpSender.*;
-import org.assertj.core.api.*;
-import org.junit.jupiter.api.*;
-import org.mockito.*;
-import wiremock.com.google.common.collect.*;
+import io.micrometer.core.ipc.http.HttpSender;
+import io.micrometer.core.ipc.http.HttpSender.Method;
+import io.micrometer.core.ipc.http.HttpSender.Request;
+import org.assertj.core.api.WithAssertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import wiremock.com.google.common.collect.ImmutableMap;
 
-import java.nio.charset.*;
-import java.util.*;
-import java.util.stream.*;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static io.micrometer.dynatrace2.MetricsApiIngestion.METRICS_INGESTION_URL;
-import static java.util.Arrays.*;
-import static java.util.Collections.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
+import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class MetricsApiIngestionTest implements WithAssertions {
 
@@ -87,5 +95,18 @@ class MetricsApiIngestionTest implements WithAssertions {
                                 "Authorization", "Api-Token " + config.apiToken(),
                                 "Content-Type", "text/plain"),
                         "first" + System.lineSeparator() + "second");
+    }
+
+    @Test
+    void shouldKeepSendingTheRequests_whenOneHttpRequestThrowsException() throws Throwable {
+        when(httpSender.send(any()))
+                .thenThrow(new IllegalArgumentException())
+                .thenReturn(new HttpSender.Response(202, null));
+
+        List<String> metricLines = asList("first", "second", "third", "fourth");
+
+        metricsApiIngestion.sendInBatches(metricLines);
+
+        verify(httpSender, times(2)).post(any());
     }
 }

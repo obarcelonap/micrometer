@@ -19,14 +19,16 @@ import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.config.NamingConvention;
 import io.micrometer.core.lang.Nullable;
 
-import static io.micrometer.dynatrace2.LineProtocolIngestionLimits.*;
+import static io.micrometer.dynatrace2.LineProtocolIngestionLimits.DIMENSION_KEY_MAX_LENGTH;
+import static io.micrometer.dynatrace2.LineProtocolIngestionLimits.DIMENSION_VALUE_MAX_LENGTH;
+import static io.micrometer.dynatrace2.LineProtocolIngestionLimits.METRIC_KEY_MAX_LENGTH;
 
 /**
  * Naming convention for line protocol ingestion into Dynatrace
  *
  * @author Oriol Barcelona
  */
-public class LineProtocolNamingConvention implements NamingConvention  {
+public class LineProtocolNamingConvention implements NamingConvention {
 
     @Override
     public String name(String name, Meter.Type type, @Nullable String baseUnit) {
