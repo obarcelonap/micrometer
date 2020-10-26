@@ -66,7 +66,7 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
         List<String> metricLines = toMetricLines(getMeters())
                 .collect(Collectors.toList());
 
-        new MetricsIngestion(httpClient, config)
+        new MetricsApiIngestion(httpClient, config)
                 .sendInBatches(metricLines);
     }
 

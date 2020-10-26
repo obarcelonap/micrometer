@@ -15,17 +15,13 @@
  */
 package io.micrometer.dynatrace2;
 
-import java.util.List;
-
-import static java.util.Arrays.asList;
-
 /**
  * Relevant limits for metric ingestion
  *
  * @author Oriol Barcelona
  * @see <a href="https://www.dynatrace.com/support/help/shortlink/metric-ingestion-protocol#limits">metric ingestion limits</a>
  */
-final class IngestionLimits {
+class LineProtocolIngestionLimits {
     static int METRIC_KEY_MAX_LENGTH = 250;
     static int DIMENSION_KEY_MAX_LENGTH = 100;
     static int DIMENSION_VALUE_MAX_LENGTH = 250;

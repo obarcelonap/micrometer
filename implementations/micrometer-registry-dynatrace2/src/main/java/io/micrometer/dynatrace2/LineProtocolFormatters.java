@@ -65,7 +65,7 @@ class LineProtocolFormatters {
     private static String formatTags(List<Tag> tags) {
         return tags.stream()
                 .map(tag -> String.format("%s=%s", tag.getKey(), tag.getValue()))
-                .limit(IngestionLimits.METRIC_LINE_MAX_DIMENSIONS)
+                .limit(LineProtocolIngestionLimits.METRIC_LINE_MAX_DIMENSIONS)
                 .collect(Collectors.joining(","));
     }
 

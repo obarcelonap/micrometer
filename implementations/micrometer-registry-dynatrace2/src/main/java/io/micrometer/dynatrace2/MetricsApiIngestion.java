@@ -8,14 +8,14 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.stream.Collectors;
 
-class MetricsIngestion {
+class MetricsApiIngestion {
     public static final String METRICS_INGESTION_URL = "/api/v2/metrics/ingest";
 
-    private final Logger logger = LoggerFactory.getLogger(MetricsIngestion.class);
+    private final Logger logger = LoggerFactory.getLogger(MetricsApiIngestion.class);
     private final HttpSender httpSender;
     private final DynatraceConfig config;
 
-    MetricsIngestion(HttpSender httpSender, DynatraceConfig config) {
+    MetricsApiIngestion(HttpSender httpSender, DynatraceConfig config) {
         this.httpSender = httpSender;
         this.config = config;
     }

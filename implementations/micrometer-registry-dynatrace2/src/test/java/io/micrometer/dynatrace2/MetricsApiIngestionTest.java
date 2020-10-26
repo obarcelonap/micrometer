@@ -11,17 +11,17 @@ import java.nio.charset.*;
 import java.util.*;
 import java.util.stream.*;
 
-import static io.micrometer.dynatrace2.MetricsIngestion.METRICS_INGESTION_URL;
+import static io.micrometer.dynatrace2.MetricsApiIngestion.METRICS_INGESTION_URL;
 import static java.util.Arrays.*;
 import static java.util.Collections.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-class MetricsIngestionTest implements WithAssertions {
+class MetricsApiIngestionTest implements WithAssertions {
 
     HttpSender httpSender;
     DynatraceConfig config;
-    MetricsIngestion metricsIngestion;
+    MetricsApiIngestion metricsApiIngestion;
 
     @BeforeEach
     void setUp() throws Throwable {
@@ -33,14 +33,14 @@ class MetricsIngestionTest implements WithAssertions {
         when(config.uri()).thenReturn("https://micrometer.dynatrace.com");
         when(config.apiToken()).thenReturn("my-token");
 
-        metricsIngestion = new MetricsIngestion(httpSender, config);
+        metricsApiIngestion = new MetricsApiIngestion(httpSender, config);
     }
 
     @Test
     void shouldNotSendRequests_whenNoMetricLines() {
         List<String> metricLines = emptyList();
 
-        metricsIngestion.sendInBatches(metricLines);
+        metricsApiIngestion.sendInBatches(metricLines);
 
         verifyNoInteractions(httpSender);
     }
@@ -49,7 +49,7 @@ class MetricsIngestionTest implements WithAssertions {
     void shouldSendOneRequest_whenLessOrEqualToBatchSize() {
         List<String> metricLines = asList("first", "second");
 
-        metricsIngestion.sendInBatches(metricLines);
+        metricsApiIngestion.sendInBatches(metricLines);
 
         verify(httpSender).post(any());
     }
@@ -60,7 +60,7 @@ class MetricsIngestionTest implements WithAssertions {
                 .mapToObj(String::valueOf)
                 .collect(Collectors.toList());
 
-        metricsIngestion.sendInBatches(metricLines);
+        metricsApiIngestion.sendInBatches(metricLines);
 
         verify(httpSender, times(10)).post(any());
     }
@@ -71,7 +71,7 @@ class MetricsIngestionTest implements WithAssertions {
 
         ArgumentCaptor<Request> requestCaptor = ArgumentCaptor.forClass(Request.class);
 
-        metricsIngestion.sendInBatches(metricLines);
+        metricsApiIngestion.sendInBatches(metricLines);
         verify(httpSender).send(requestCaptor.capture());
 
         assertThat(requestCaptor.getValue())

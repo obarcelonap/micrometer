@@ -17,14 +17,13 @@ package io.micrometer.dynatrace2;
 
 import io.micrometer.core.instrument.config.validate.Validated;
 import org.assertj.core.api.WithAssertions;
-import org.assertj.core.groups.Tuple;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static io.micrometer.dynatrace2.IngestionLimits.MAX_METRIC_LINES_PER_REQUEST;
+import static io.micrometer.dynatrace2.LineProtocolIngestionLimits.MAX_METRIC_LINES_PER_REQUEST;
 
 class DynatraceConfigTest implements WithAssertions {
     private final Map<String, String> props = new HashMap<>();

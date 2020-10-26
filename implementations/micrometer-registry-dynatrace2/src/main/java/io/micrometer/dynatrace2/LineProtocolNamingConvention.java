@@ -19,10 +19,10 @@ import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.config.NamingConvention;
 import io.micrometer.core.lang.Nullable;
 
-import static io.micrometer.dynatrace2.IngestionLimits.*;
+import static io.micrometer.dynatrace2.LineProtocolIngestionLimits.*;
 
 /**
- * Naming convention for Dynatrace
+ * Naming convention for line protocol ingestion into Dynatrace
  *
  * @author Oriol Barcelona
  */

@@ -23,7 +23,7 @@ import java.util.function.Function;
 
 import static io.micrometer.core.instrument.config.MeterRegistryConfigValidator.*;
 import static io.micrometer.core.instrument.config.validate.PropertyValidator.*;
-import static io.micrometer.dynatrace2.IngestionLimits.MAX_METRIC_LINES_PER_REQUEST;
+import static io.micrometer.dynatrace2.LineProtocolIngestionLimits.MAX_METRIC_LINES_PER_REQUEST;
 
 /**
  * Configuration for {@link DynatraceMeterRegistry}
