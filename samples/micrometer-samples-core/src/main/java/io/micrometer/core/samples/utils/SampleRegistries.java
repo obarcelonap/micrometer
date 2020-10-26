@@ -452,7 +452,7 @@ public class SampleRegistries {
     }
 
     public static io.micrometer.dynatrace2.DynatraceMeterRegistry dynatrace2(String apiToken, String uri) {
-        return new io.micrometer.dynatrace2.DynatraceMeterRegistry(new io.micrometer.dynatrace2.DynatraceConfig() {
+        return io.micrometer.dynatrace2.DynatraceMeterRegistry.builder(new io.micrometer.dynatrace2.DynatraceConfig() {
             @Override
             public String get(String key) {
                 return null;
@@ -473,7 +473,7 @@ public class SampleRegistries {
             public Duration step() {
                 return Duration.ofSeconds(5);
             }
-        }, Clock.SYSTEM);
+        }).build();
     }
 
     public static HumioMeterRegistry humio(String apiToken) {

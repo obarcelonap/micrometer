@@ -43,7 +43,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 class DynatraceMeterRegistryTest implements WithAssertions {
 
     private static final String API_TOKEN = "DT-API-TOKEN";
-    private static final UrlPattern METRICS_INGESTION_URL = urlEqualTo(DynatraceMeterRegistry.METRICS_INGESTION_URL);
+    private static final UrlPattern METRICS_INGESTION_URL = urlEqualTo(MetricsIngestion.METRICS_INGESTION_URL);
     private static final StringValuePattern TEXT_PLAIN_CONTENT_TYPE = equalTo("text/plain");
 
     WireMockServer dtApiServer;

@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.function.Function;
-import java.util.stream.Stream;
+import java.util.stream.*;
 
 /**
  * Metric line factory which maps from micrometer domain to expected format in line protocol
@@ -75,9 +75,10 @@ class LineProtocolFormatterFactory {
 
     private String metricName(Meter meter, Measurement measurement) {
         String meterName = meter.getId().getName();
-        if (measurement.getStatistic() == Statistic.VALUE) {
+        if (Streams.of(meter.measure()).count() == 1) {
             return meterName;
         }
+
         return String.format("%s.%s", meterName, measurement.getStatistic().getTagValueRepresentation());
     }
 }

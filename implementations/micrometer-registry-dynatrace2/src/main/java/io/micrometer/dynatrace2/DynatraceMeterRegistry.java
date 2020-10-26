@@ -42,7 +42,6 @@ import java.util.stream.Stream;
  * @since ?
  */
 public class DynatraceMeterRegistry extends StepMeterRegistry {
-    public static final String METRICS_INGESTION_URL = "/api/v2/metrics/ingest";
 
     private static final ThreadFactory DEFAULT_THREAD_FACTORY = new NamedThreadFactory("dynatrace2-metrics-publisher");
     private final Logger logger = LoggerFactory.getLogger(DynatraceMeterRegistry.class);
@@ -64,22 +63,11 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
 
     @Override
     protected void publish() {
-        logger.info("publish DT2");
-        Stream<String> metricLines = toMetricLines(getMeters());
+        List<String> metricLines = toMetricLines(getMeters())
+                .collect(Collectors.toList());
 
-        String body = metricLines.collect(Collectors.joining(System.lineSeparator()));
-        logger.info("dynatrace v2 metrics to report \n" + body);
-        try {
-           httpClient.post(config.uri() + METRICS_INGESTION_URL)
-                    .withHeader("Authorization", "Api-Token " + config.apiToken())
-                    .withPlainText(body)
-                    .send()
-                   // TODO: improve response handling
-           .onSuccess((r) -> logger.debug("Ingested {} metric lines into dynatrace", 0))
-           .onError((r) -> logger.error("Failed metric ingestion. code={} body={}", r.code(), r.body()));
-        } catch (Throwable throwable) {
-            logger.error("Failed metric ingestion", throwable);
-        }
+        new MetricsIngestion(httpClient, config)
+                .sendInBatches(metricLines);
     }
 
     private Stream<String> toMetricLines(List<Meter> meters) {
