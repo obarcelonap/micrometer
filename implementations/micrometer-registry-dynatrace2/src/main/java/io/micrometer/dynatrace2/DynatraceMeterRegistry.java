@@ -24,6 +24,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -54,15 +55,28 @@ public class DynatraceMeterRegistry extends StepMeterRegistry {
 
     @Override
     protected void publish() {
-        LineProtocolFormatterFactory lineProtocolFormatterFactory = new LineProtocolFormatterFactory(clock);
+        MetricLineFactory metricLineFactory = new MetricLineFactory(clock);
 
-        List<String> metricLines = getMeters()
+        Map<Boolean, List<String>> metricLines = getMeters()
                 .stream()
-                .flatMap(lineProtocolFormatterFactory::toMetricLines)
-                .collect(Collectors.toList());
+                .flatMap(metricLineFactory::toMetricLines)
+                .collect(Collectors.partitioningBy(this::lineLengthGreaterThanLimit));
 
+        List<String> metricLinesToSkip = metricLines.get(true);
+        if (!metricLinesToSkip.isEmpty()) {
+            logger.warn(
+                    "Dropping {} metric lines because are greater than line protocol max length limit ({}).",
+                    metricLinesToSkip.size(),
+                    LineProtocolIngestionLimits.METRIC_LINE_MAX_LENGTH);
+        }
+
+        List<String> metricLinesToSend = metricLines.get(false);
         new MetricsApiIngestion(httpClient, config)
-                .sendInBatches(metricLines);
+                .sendInBatches(metricLinesToSend);
+    }
+
+    private boolean lineLengthGreaterThanLimit(String line) {
+        return line.length() > LineProtocolIngestionLimits.METRIC_LINE_MAX_LENGTH;
     }
 
     @Override

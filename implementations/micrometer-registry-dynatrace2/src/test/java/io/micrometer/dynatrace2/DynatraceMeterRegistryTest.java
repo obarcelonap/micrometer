@@ -20,6 +20,7 @@ import com.github.tomakehurst.wiremock.matching.StringValuePattern;
 import com.github.tomakehurst.wiremock.matching.UrlPattern;
 import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.MockClock;
+import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.config.validate.ValidationException;
 import org.assertj.core.api.WithAssertions;
@@ -29,10 +30,21 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import ru.lanwen.wiremock.ext.WiremockResolver;
 import ru.lanwen.wiremock.ext.WiremockResolver.Wiremock;
 
+import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.anyRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static io.micrometer.dynatrace2.LineProtocolIngestionLimits.DIMENSION_KEY_MAX_LENGTH;
+import static io.micrometer.dynatrace2.LineProtocolIngestionLimits.DIMENSION_VALUE_MAX_LENGTH;
+import static io.micrometer.dynatrace2.LineProtocolIngestionLimits.METRIC_KEY_MAX_LENGTH;
+import static io.micrometer.dynatrace2.LineProtocolIngestionLimits.METRIC_LINE_MAX_LENGTH;
 
 /**
  * Tests for {@link DynatraceMeterRegistry}.
@@ -160,6 +172,36 @@ class DynatraceMeterRegistryTest implements WithAssertions {
                         "cpu.temperature,cpu=2,dt.entity.host=HOST-06F288EE2A930951 50",
                         "cpu.temperature,cpu=1,dt.entity.host=HOST-06F288EE2A930951 55"))
         );
+    }
+
+    @Test
+    void shouldSkipMetricLines_whenAreBiggerThanMaxLengthLimit() {
+        String metricName = newString(METRIC_KEY_MAX_LENGTH);
+        long metricValue = 55;
+        int lengthForTags = METRIC_LINE_MAX_LENGTH - metricName.length() - String.valueOf(metricValue).length();
+        int maxSizeTagLength = DIMENSION_KEY_MAX_LENGTH + DIMENSION_VALUE_MAX_LENGTH;
+        int numberOfTags = (lengthForTags / maxSizeTagLength) + 1;
+
+        List<Tag> tags = IntStream.range(0, numberOfTags)
+                .mapToObj(String::valueOf)
+                .map(this::maxSizeTag)
+                .collect(Collectors.toList());
+
+        meterRegistry.gauge(metricName, tags, metricValue);
+
+        meterRegistry.publish();
+
+        dtApiServer.verify(0, anyRequestedFor(METRICS_INGESTION_URL));
+    }
+
+    private Tag maxSizeTag(String prefix) {
+        return Tag.of(
+                prefix + newString(DIMENSION_KEY_MAX_LENGTH - prefix.length()),
+                newString(DIMENSION_VALUE_MAX_LENGTH));
+    }
+
+    private String newString(int length) {
+        return new String(new char[length]);
     }
 
     private StringValuePattern equalToMetricLines(String... lines) {

@@ -20,8 +20,6 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Measurement;
 import io.micrometer.core.instrument.Meter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.stream.Stream;
 
@@ -30,12 +28,10 @@ import java.util.stream.Stream;
  *
  * @author Oriol Barcelona
  */
-class LineProtocolFormatterFactory {
+class MetricLineFactory {
     private final Clock clock;
 
-    private final Logger logger = LoggerFactory.getLogger(LineProtocolFormatterFactory.class);
-
-    LineProtocolFormatterFactory(Clock clock) {
+    MetricLineFactory(Clock clock) {
         this.clock = clock;
     }
 
